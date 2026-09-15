@@ -39,9 +39,14 @@ local function get_server_cmd()
           table.insert(cmd, '--osc-port')
           table.insert(cmd, tostring(config.audio.osc_port))
         end
-        -- auto_superdirt defaults to true, only skip if explicitly false
+        -- auto_superdirt defaults to true, only skip if explicitly false.
+        -- The server CLI defaults to auto_superdirt=true when the flag is
+        -- simply absent, so disabling it requires explicitly passing
+        -- --no-auto-superdirt rather than omitting --auto-superdirt.
         if config.audio.auto_superdirt ~= false then
           table.insert(cmd, '--auto-superdirt')
+        else
+          table.insert(cmd, '--no-auto-superdirt')
         end
       end
       -- Amplitude-envelope curve: 0 = linear WebAudio parity
