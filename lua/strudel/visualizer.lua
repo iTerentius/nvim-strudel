@@ -65,13 +65,14 @@ local function get_color_hl_group(color)
     hex = string.format('#%06x', rgb)
   end
 
-  -- Simple relative-luminance check so the text stays legible against
-  -- whatever color the pattern picked, rather than hardcoding black/white.
-  local r = tonumber(hex:sub(2, 3), 16)
-  local g = tonumber(hex:sub(4, 5), 16)
-  local b = tonumber(hex:sub(6, 7), 16)
-  local luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255
-  local fg = luminance > 0.6 and '#000000' or '#ffffff'
+  -- Always black text: a true "reverse of whatever's underneath" isn't
+  -- feasible (extmarks can't blend against whatever syntax color happens to
+  -- already be on that span, unlike a CSS blend mode), and auto-picking
+  -- black/white by background luminance read as inconsistent against dark
+  -- colorschemes in practice - fixed black over .color()'s (usually bright)
+  -- backgrounds reads fine in practice. Flip to '#ffffff' here if you switch
+  -- to a light theme.
+  local fg = '#000000'
 
   -- Group name must be a valid identifier - can't use '#' or arbitrary
   -- punctuation from a CSS name directly.
