@@ -177,7 +177,11 @@ function M.highlight_active(bufnr, elements)
           end_row = end_line,
           end_col = end_col,
           hl_group = hl_group,
-          priority = 100,
+          -- Must beat treesitter's own highlighter, which defaults to the
+          -- same priority (100) - on that tie, its foreground color was
+          -- winning over this group's fg while only this group's bg showed,
+          -- since treesitter highlighting doesn't set a background itself.
+          priority = 200,
         })
 
         if ok then
