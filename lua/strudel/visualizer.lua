@@ -34,6 +34,53 @@ local function get_namespace()
   return ns_id
 end
 
+---@type table<string, string|false> Resolved color string -> highlight group name (or false if invalid)
+local color_hl_cache = {}
+
+---Resolve a .color()/.colour() value (CSS name or hex) to a highlight group,
+---creating one on demand. Mirrors strudel.cc's own per-pattern color-coding
+---of active elements, which nvim-strudel otherwise has no equivalent for -
+---everything normally uses one fixed StrudelActive group regardless of what
+---the pattern itself specifies.
+---@param color string
+---@return string? hl_group nil if the color string couldn't be resolved
+local function get_color_hl_group(color)
+  local cached = color_hl_cache[color]
+  if cached ~= nil then
+    return cached or nil
+  end
+
+  local hex
+  if color:match('^#%x%x%x%x%x%x$') then
+    hex = color
+  else
+    -- CSS color name (e.g. "magenta") - nvim_get_color_by_name handles the
+    -- standard set; returns -1 for anything it doesn't recognize.
+    local rgb = vim.api.nvim_get_color_by_name(color)
+    if rgb == -1 then
+      utils.debug('Strudel: unresolvable .color() value: ' .. tostring(color))
+      color_hl_cache[color] = false
+      return nil
+    end
+    hex = string.format('#%06x', rgb)
+  end
+
+  -- Simple relative-luminance check so the text stays legible against
+  -- whatever color the pattern picked, rather than hardcoding black/white.
+  local r = tonumber(hex:sub(2, 3), 16)
+  local g = tonumber(hex:sub(4, 5), 16)
+  local b = tonumber(hex:sub(6, 7), 16)
+  local luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255
+  local fg = luminance > 0.6 and '#000000' or '#ffffff'
+
+  -- Group name must be a valid identifier - can't use '#' or arbitrary
+  -- punctuation from a CSS name directly.
+  local group_name = 'StrudelColor_' .. hex:sub(2)
+  vim.api.nvim_set_hl(0, group_name, { bg = hex, fg = fg })
+  color_hl_cache[color] = group_name
+  return group_name
+end
+
 ---Clear all extmarks in a buffer
 ---@param bufnr number
 local function clear_buffer(bufnr)
@@ -118,10 +165,17 @@ function M.highlight_active(bufnr, elements)
 
       if start_col < end_col then
         utils.debug(string.format('Setting extmark: line=%d, col=%d-%d', start_line, start_col, end_col))
+        -- .color("magenta") on this hap overrides the fixed StrudelActive
+        -- group with one matching that literal color, same idea as
+        -- strudel.cc's own CodeMirror decoration.
+        local hl_group = cfg.highlight.active
+        if elem.color then
+          hl_group = get_color_hl_group(elem.color) or hl_group
+        end
         local ok, mark_id = pcall(vim.api.nvim_buf_set_extmark, bufnr, ns, start_line, start_col, {
           end_row = end_line,
           end_col = end_col,
-          hl_group = cfg.highlight.active,
+          hl_group = hl_group,
           priority = 100,
         })
 

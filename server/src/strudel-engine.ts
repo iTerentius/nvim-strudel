@@ -689,9 +689,14 @@ export class StrudelEngine {
         // Use setImmediate to run after current I/O events
         const locations = hap.context?.locations;
         if (locations && locations.length > 0) {
-          const value = typeof hap.value === 'object' 
-            ? (hap.value.s || hap.value.note || '?') 
+          const value = typeof hap.value === 'object'
+            ? (hap.value.s || hap.value.note || '?')
             : String(hap.value);
+          // .color("magenta") etc - passed through to the client as-is; it
+          // decides how to render it (Neovim resolves CSS names/hex itself).
+          const color = typeof hap.value === 'object' && typeof hap.value.color === 'string'
+            ? hap.value.color
+            : undefined;
           
           // Capture locations and process in next tick
           setImmediate(() => {
@@ -716,6 +721,7 @@ export class StrudelEngine {
                   endLine: endPos.line,
                   endCol: endPos.column,
                   value,
+                  color,
                 });
               } else if (loc.start?.line && loc.end?.line) {
                 this.activeElements.push({
@@ -724,6 +730,7 @@ export class StrudelEngine {
                   endLine: loc.end.line,
                   endCol: loc.end.column,
                   value,
+                  color,
                 });
               }
             }

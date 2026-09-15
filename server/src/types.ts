@@ -44,6 +44,9 @@ export interface SourceLocation {
 /** Active element with source location */
 export interface ActiveElement extends SourceLocation {
   value?: string;
+  /** From the pattern's own .color() control, e.g. .s("bd").color("magenta") - a
+   * CSS color name or hex string, passed through as-is for the client to render. */
+  color?: string;
 }
 
 /** Message from server to Neovim client */
