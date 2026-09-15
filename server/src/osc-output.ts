@@ -695,7 +695,22 @@ export function hapToOscArgs(hap: any, cps: number): any[] {
     delete controls.note;
     delete controls.n; // Synths don't use sample index
   }
-  
+
+  // Fallback note-name -> MIDI-number conversion for custom SynthDefs that
+  // aren't in synthSoundMap above (so the note->freq conversion there was
+  // skipped) and aren't a registered pitched sample bank (so
+  // processValueForOsc's conversion was skipped too, see sample-metadata.ts).
+  // Without this, a note name like "c4" reaches SuperDirt as a raw OSC
+  // string - a numeric \note SynthDef control can't consume a string, so it
+  // silently stays at its default every time regardless of the pattern.
+  // Converts to a plain MIDI number (not freq), matching Tidal/SuperDirt's
+  // normal \note convention, so a custom SynthDef can do the freq math
+  // itself (e.g. `freq = 440 * 2.pow((note - 69) / 12)`).
+  // Idempotent: no-op if note was already converted/deleted above.
+  if (typeof controls.note === 'string' && isNote(controls.note)) {
+    controls.note = noteToMidi(controls.note);
+  }
+
   // Handle soundfont instruments
   // Soundfonts need looping + ADSR envelope, so we use our custom strudel_soundfont synth
   // Regular samples use the default dirt_sample synth (no looping)
